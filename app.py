@@ -68,6 +68,7 @@ def deduplicate_by_timestamp(df, timestamp_col="Date (UTC)", success_col="Succee
             ascending=[True, False]
         )
 
+
     return df.drop_duplicates(subset=[timestamp_col], keep="first")
 
 def investigation_step_1(df):
@@ -145,6 +146,7 @@ def investigation_step_4(df):
         authentications from foreign locations
     """
     df = df.copy()
+    df["Authentication method detail"] = df["Authentication method detail"].astype(str)
     df["Country"] = df["Location"].apply(extract_country)
 
     filtered = df[
@@ -181,6 +183,8 @@ def investigation_step_5(df):
         authentications from foreign locations
     """
     df = df.copy()
+    df["Authentication method"] = df["Authentication method"].astype(str)
+    df["Result detail"] = df["Result detail"].astype(str)
     df["Country"] = df["Location"].apply(extract_country)
 
     # Detect successful MFA-satisfied authentication from foreign locations
@@ -196,7 +200,10 @@ def investigation_step_5(df):
         )
     ]
 
-    filtered = deduplicate_by_timestamp(filtered)
+    filtered = filtered.drop_duplicates(
+        subset=["Date (UTC)", "Authentication method", "Result detail"],
+        keep="first"
+    )
     return filtered
 
 def generate_report(step1, step2, step3, step4, step5):
@@ -207,17 +214,34 @@ def generate_report(step1, step2, step3, step4, step5):
             doc.add_paragraph(f"{title}: No records identified.")
             return
 
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+
+        def set_cell_border(cell):
+            tc = cell._tc
+            tcPr = tc.get_or_add_tcPr()
+
+            for edge in ("top", "left", "bottom", "right"):
+                edge_element = OxmlElement(f"w:{edge}")
+                edge_element.set(qn("w:val"), "single")
+                edge_element.set(qn("w:sz"), "4")
+                edge_element.set(qn("w:space"), "0")
+                edge_element.set(qn("w:color"), "000000")
+                tcPr.append(edge_element)
+
         doc.add_paragraph(title)
         table = doc.add_table(rows=1, cols=len(df.columns))
         hdr_cells = table.rows[0].cells
 
         for i, col in enumerate(df.columns):
             hdr_cells[i].text = col
+            set_cell_border(hdr_cells[i])
 
         for _, row in df.iterrows():
             row_cells = table.add_row().cells
             for i, value in enumerate(row):
                 row_cells[i].text = str(value)
+                set_cell_border(row_cells[i])
 
     # Title
     doc.add_heading("Entra ID Sign-In Investigation Report", level=1)
@@ -283,8 +307,15 @@ def generate_report(step1, step2, step3, step4, step5):
         ti_rows = []
         for ip, result in step3.items():
             stats = result.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
+            provider = (
+                result.get("data", {})
+                      .get("attributes", {})
+                      .get("as_owner", "Unknown")
+            )
+
             ti_rows.append({
                 "IP Address": ip,
+                "IP Provider": provider,
                 "Malicious": stats.get("malicious", 0),
                 "Suspicious": stats.get("suspicious", 0)
             })
@@ -330,13 +361,6 @@ def generate_report(step1, step2, step3, step4, step5):
             "Successful MFA-Satisfied Authentication Events"
         )
 
-    # Risk Assessment
-    doc.add_heading("4. Risk Assessment", level=2)
-    doc.add_paragraph(
-        "Based on the investigation results, there is no evidence of account compromise. "
-        "Observed foreign sign-in attempts were unsuccessful, indicating that existing "
-        "security controls are functioning as intended."
-    )
 
     # Recommendations
     doc.add_heading("5. Recommendations", level=2)

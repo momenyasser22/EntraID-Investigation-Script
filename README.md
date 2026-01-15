@@ -13,6 +13,9 @@ A Python-based investigation tool for analyzing Microsoft Entra ID (formerly Azu
 - **Smart Environment Detection**: Automatically detects Docker vs local execution environment and adjusts output paths accordingly
 - **Dynamic Report Naming**: Automatically names reports based on investigated user(s) with filesystem-safe sanitization
 - **Data Deduplication**: Intelligently deduplicates records by timestamp while prioritizing successful authentications
+- **Professional Report Formatting**: Generates reports with formatted tables including borders for better readability
+- **Enhanced Threat Intelligence**: Includes IP Provider (AS Owner) information in VirusTotal results
+- **Robust Data Handling**: Type conversion and null handling for reliable data processing
 
 ## Prerequisites
 
@@ -163,7 +166,10 @@ Detects successful MFA-satisfied authentication attempts from foreign locations.
 - Authentication method contains "Previously satisfied" OR
 - Result detail contains "MFA" (case-insensitive)
 
-This step is critical for identifying cases where MFA tokens or sessions may have been compromised or reused from unauthorized locations.
+**Enhanced Deduplication:**
+- Uses multi-column deduplication (Date, Authentication method, Result detail) to ensure accurate results
+- Handles null/NaN values gracefully through type conversion
+- This step is critical for identifying cases where MFA tokens or sessions may have been compromised or reused from unauthorized locations
 
 ## Output
 
@@ -256,6 +262,8 @@ This ensures seamless execution in both environments without requiring code chan
 **Deduplication Logic:**
 - Records are deduplicated by timestamp (`Date (UTC)`)
 - When multiple records exist for the same timestamp, successful authentications are prioritized
+- Step 5 uses enhanced deduplication based on timestamp, authentication method, and result detail
+- Type conversion ensures proper handling of NaN/null values in string columns
 - This ensures that important security events are not lost during data processing
 
 **Country Extraction:**
@@ -275,8 +283,14 @@ The report generation includes context-aware security recommendations:
 
 **Threat Intelligence Integration:**
 - VirusTotal API integration provides malicious and suspicious counts for each foreign IP
-- Results are included in the report's Threat Intelligence Assessment section
+- IP Provider (AS Owner) information is included for each IP address
+- Results are included in the report's Threat Intelligence Assessment section with formatted tables
 - Rate limiting (1 request/minute) is automatically handled to respect API limits
+
+**Report Formatting:**
+- All tables in the report include professional borders for better readability
+- Tables are properly formatted with consistent styling
+- Data is presented in a clear, structured format suitable for security investigations
 
 ## Troubleshooting
 
