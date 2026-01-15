@@ -10,6 +10,9 @@ A Python-based investigation tool for analyzing Microsoft Entra ID (formerly Azu
 - **Authentication Success Analysis**: Identifies successful password-based authentication attempts from foreign locations
 - **MFA Satisfaction Detection**: Detects successful MFA-satisfied authentication attempts from foreign locations
 - **Automated Report Generation**: Generates comprehensive Word document reports with findings and recommendations
+- **Smart Environment Detection**: Automatically detects Docker vs local execution environment and adjusts output paths accordingly
+- **Dynamic Report Naming**: Automatically names reports based on investigated user(s) with filesystem-safe sanitization
+- **Data Deduplication**: Intelligently deduplicates records by timestamp while prioritizing successful authentications
 
 ## Prerequisites
 
@@ -146,8 +149,21 @@ Enriches foreign IP addresses with threat intelligence data from VirusTotal. Not
 ### Step 4: Authentication Success Review
 Identifies successful password-based authentication attempts (Password Hash Sync) from foreign locations, which may indicate credential compromise.
 
+**Detection Criteria:**
+- Sign-in succeeded from a foreign location (outside baseline country)
+- Authentication method detail contains "Password Hash Sync" (case-insensitive)
+
+This step specifically targets password-based authentications that succeeded from unauthorized geographic locations, which is a strong indicator of potential credential compromise.
+
 ### Step 5: MFA Satisfaction Review
 Detects successful MFA-satisfied authentication attempts from foreign locations. This includes authentications where MFA was previously satisfied or where the result detail indicates MFA completion. This step helps identify potential session reuse or MFA bypass scenarios from unauthorized geographic locations.
+
+**Detection Criteria:**
+- Sign-in succeeded from a foreign location (outside baseline country)
+- Authentication method contains "Previously satisfied" OR
+- Result detail contains "MFA" (case-insensitive)
+
+This step is critical for identifying cases where MFA tokens or sessions may have been compromised or reused from unauthorized locations.
 
 ## Output
 
@@ -159,10 +175,24 @@ A comprehensive report dynamically named based on the investigated user(s). The 
 - Executive Summary
 - Scope and Methodology
 - Detailed Findings for each investigation step
+  - Session Hijacking Analysis (Step 1)
+  - Baseline Location Violations (Step 2)
+  - Threat Intelligence Assessment (Step 3)
+  - Authentication Success Review (Step 4)
+  - MFA Satisfaction Review (Step 5)
 - Risk Assessment
-- Security Recommendations
+- Security Recommendations (context-aware based on findings)
 
-**Note**: If multiple users are investigated, the report will be named `Investigation_Report_Multiple_Users.docx`. For single-user investigations, the filename will include the user's name (sanitized for filesystem compatibility).
+**Report Naming Logic:**
+- **Single User**: `Investigation_Report_{UserName}.docx` (user name sanitized for filesystem compatibility)
+- **Multiple Users**: `Investigation_Report_Multiple_Users.docx`
+- **Filename Sanitization**: Special characters are removed or replaced with underscores to ensure filesystem compatibility across all operating systems
+
+**Report Sections:**
+Each investigation step has its own dedicated section in the report with:
+- Summary statistics
+- Detailed tables of findings (when applicable)
+- Contextual explanations of the security implications
 
 ## Input File Format
 
@@ -202,6 +232,16 @@ The Docker setup ensures:
 - Isolated dependencies
 - Easy data management through mounted volumes
 
+### Automatic Environment Detection
+
+The script automatically detects whether it's running in a Docker container or locally:
+
+- **Docker Environment**: When `/data` directory exists, the script uses `/data/output` for all output files
+- **Local Environment**: When running locally, the script uses `./data/output` relative to the script directory
+- **Automatic Directory Creation**: Output directories are created automatically if they don't exist
+
+This ensures seamless execution in both environments without requiring code changes.
+
 ## Security Considerations
 
 - **API Keys**: Never commit your VirusTotal API key to version control. Consider using environment variables or a configuration file excluded from git.
@@ -209,11 +249,41 @@ The Docker setup ensures:
 - **Rate Limiting**: The VirusTotal API lookup respects rate limits (1 request per minute) to avoid API abuse.
 - **Docker Security**: When using Docker, ensure your `data/` directory has appropriate permissions to protect sensitive investigation data.
 
+## Advanced Features
+
+### Data Processing
+
+**Deduplication Logic:**
+- Records are deduplicated by timestamp (`Date (UTC)`)
+- When multiple records exist for the same timestamp, successful authentications are prioritized
+- This ensures that important security events are not lost during data processing
+
+**Country Extraction:**
+- Location strings are parsed to extract country codes
+- Handles various location formats (e.g., "City, State, Country")
+- Automatically handles missing or malformed location data
+
+### Report Generation
+
+**Intelligent Recommendations:**
+The report generation includes context-aware security recommendations:
+- Password reset recommendations when foreign IPs are detected
+- IP blocking recommendations with specific IP addresses listed
+- MFA registration reset recommendations for session hijacking indicators
+- Session invalidation recommendations for successful foreign authentications
+- Policy enforcement reminders for baseline security controls
+
+**Threat Intelligence Integration:**
+- VirusTotal API integration provides malicious and suspicious counts for each foreign IP
+- Results are included in the report's Threat Intelligence Assessment section
+- Rate limiting (1 request/minute) is automatically handled to respect API limits
+
 ## Troubleshooting
 
 ### File Not Found Error
 - **Docker**: Ensure files are in the `data/input/` directory and use paths like `/data/input/filename.csv`
 - **Local**: Ensure you provide the full absolute path to your input files, or ensure relative paths are correct from the script's directory
+- **Output Directory**: The script automatically creates output directories if they don't exist
 
 ### Unsupported File Type
 The script supports CSV (`.csv`) and Excel (`.xls`, `.xlsx`) files. Ensure your files are in one of these formats.
@@ -222,8 +292,36 @@ The script supports CSV (`.csv`) and Excel (`.xls`, `.xlsx`) files. Ensure your 
 - Verify your API key is correct
 - Check your API quota/rate limits
 - Ensure you have internet connectivity
+- The script will continue even if VirusTotal lookups fail (errors are logged but don't stop execution)
 
+### Missing Columns Error
+If you encounter errors about missing columns:
+- Ensure your SignIn file contains all required columns listed in the Input File Format section
+- Ensure your AuthDetails file contains `Result detail` column for Step 5 MFA detection
+- Column names are case-sensitive - verify exact spelling matches
+
+
+## Code Structure
+
+The application is organized into logical sections:
+
+- **Configuration**: Environment variables and path settings
+- **Helper Functions**: File loading, data merging, country extraction, and deduplication utilities
+- **Investigation Steps**: Five distinct analysis functions (steps 1-5)
+- **VirusTotal Integration**: API lookup function with rate limiting
+- **Report Generation**: Comprehensive Word document creation with findings and recommendations
+- **Main Function**: Orchestrates the investigation workflow
+
+Each investigation step function includes:
+- Comprehensive docstrings explaining purpose and logic
+- Input validation and error handling
+- Progress indicators and status messages
+- Consistent return formats for report generation
 
 ## Author
 
 [Momen Yasser /momenyasser221@gmail.com]
+
+## Repository
+
+GitHub: [https://github.com/momenyasser22/EntraID-Investigation-Script](https://github.com/momenyasser22/EntraID-Investigation-Script)
