@@ -18,6 +18,7 @@ A Python-based investigation tool for analyzing Microsoft Entra ID (formerly Azu
 - VirusTotal API key (optional, for threat intelligence enrichment)
 
 ## File Structure:
+```bash
    EntraID-Investigation-Script/
    │
    ├── app.py
@@ -36,7 +37,7 @@ A Python-based investigation tool for analyzing Microsoft Entra ID (formerly Azu
    │       └── Investigation_Report_<UserName>.docx
    │
    └── .gitignore   (optional but recommended)
-
+```
 ## Installation
 
 ### Option 1: Docker (Recommended)
