@@ -17,6 +17,26 @@ A Python-based investigation tool for analyzing Microsoft Entra ID (formerly Azu
 - Microsoft Entra ID sign-in logs (CSV or Excel format)
 - VirusTotal API key (optional, for threat intelligence enrichment)
 
+## File Structure:
+EntraID-Investigation-Script/
+│
+├── app.py
+├── README.md
+├── requirements.txt
+├── Dockerfile
+├── docker-compose.yml
+│
+├── data/
+│   ├── input/
+│   │   ├── signin_logs.csv
+│   │   └── signin_authdetails.csv
+│   │
+│   └── output/
+│       ├── main_investigation.csv
+│       └── Investigation_Report_<UserName>.docx
+│
+└── .gitignore   (optional but recommended)
+
 ## Installation
 
 ### Option 1: Docker (Recommended)
