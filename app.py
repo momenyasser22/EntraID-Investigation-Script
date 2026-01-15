@@ -128,14 +128,30 @@ def virustotal_lookup(ips):
     return results
 
 def investigation_step_4(df):
+    """
+    Detects successful password-based authentication attempts from foreign locations.
+    
+    This step identifies authentications where:
+    - The sign-in succeeded from a foreign location
+    - The authentication method detail indicates Password Hash Sync
+    
+    This may indicate credential compromise or unauthorized access attempts.
+    
+    Args:
+        df: DataFrame containing merged sign-in and authentication data
+        
+    Returns:
+        DataFrame containing filtered records of successful password-based
+        authentications from foreign locations
+    """
     df = df.copy()
     df["Country"] = df["Location"].apply(extract_country)
 
-    # Catch successful Password Hash Sync authentication from foreign locations
     filtered = df[
         (df["Country"] != BASELINE_LOCATION) &
         (df["Succeeded"] == True) &
         (
+            # Password-based credential validation
             df["Authentication method detail"]
             .str.contains("Password Hash Sync", case=False, na=False)
         )
@@ -146,7 +162,44 @@ def investigation_step_4(df):
 
     return filtered
 
-def generate_report(step1, step2, step3, step4):
+def investigation_step_5(df):
+    """
+    Detects successful MFA-satisfied authentication attempts from foreign locations.
+    
+    This step identifies authentications where:
+    - The sign-in succeeded from a foreign location
+    - MFA was previously satisfied OR the result detail indicates MFA completion
+    
+    This helps identify potential session reuse or MFA bypass scenarios from
+    unauthorized geographic locations.
+    
+    Args:
+        df: DataFrame containing merged sign-in and authentication data
+        
+    Returns:
+        DataFrame containing filtered records of successful MFA-satisfied
+        authentications from foreign locations
+    """
+    df = df.copy()
+    df["Country"] = df["Location"].apply(extract_country)
+
+    # Detect successful MFA-satisfied authentication from foreign locations
+    filtered = df[
+        (df["Country"] != BASELINE_LOCATION) &
+        (df["Succeeded"] == True) &
+        (
+            df["Authentication method"]
+            .str.contains("Previously satisfied", case=False, na=False)
+            |
+            df["Result detail"]
+            .str.contains("MFA", case=False, na=False)
+        )
+    ]
+
+    filtered = deduplicate_by_timestamp(filtered)
+    return filtered
+
+def generate_report(step1, step2, step3, step4, step5):
     doc = Document()
 
     def add_table_from_df(df, title):
@@ -185,7 +238,8 @@ def generate_report(step1, step2, step3, step4):
         "• Session correlation using Session ID to detect potential hijacking\n"
         "• Baseline country enforcement review (Egypt)\n"
         "• Threat intelligence enrichment using VirusTotal\n"
-        "• Verification of successful authentication attempts from foreign locations"
+        "• Verification of successful password-based authentication attempts from foreign locations\n"
+        "• Detection of successful MFA-satisfied authentication attempts from foreign locations"
     )
 
     # Step 1 Findings
@@ -256,6 +310,24 @@ def generate_report(step1, step2, step3, step4):
                 ["Date (UTC)", "User", "Authentication method", "IP address", "Location"]
             ],
             "Successful Foreign Authentication Events"
+        )
+
+    # Step 5 Findings
+    doc.add_heading("3.5 MFA Satisfaction Review", level=3)
+
+    if step5.empty:
+        doc.add_paragraph(
+            "No MFA-satisfied authentication attempts were observed from outside Egypt."
+        )
+    else:
+        doc.add_paragraph(
+            "Successful MFA-satisfied authentication attempts from foreign locations were identified."
+        )
+        add_table_from_df(
+            step5[
+                ["Date (UTC)", "User", "Authentication method", "IP address", "Location", "Result detail"]
+            ],
+            "Successful MFA-Satisfied Authentication Events"
         )
 
     # Risk Assessment
@@ -364,11 +436,15 @@ def main():
     step3 = virustotal_lookup(ips)
 
     step4 = investigation_step_4(main_df)
+    step5 = investigation_step_5(main_df)
 
     print("[+] Step 4 output:")
     print(step4[["User", "Authentication method", "Location", "Succeeded"]])
 
-    generate_report(step1, step2, step3, step4)
+    print("[+] Step 5 output (MFA satisfied from foreign locations):")
+    print(step5[["User", "Authentication method", "Location", "Succeeded"]])
+
+    generate_report(step1, step2, step3, step4, step5)
 
     print("Investigation completed.")
     print(f"CSV exported to: {OUTPUT_CSV}")

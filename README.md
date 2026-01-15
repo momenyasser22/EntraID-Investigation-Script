@@ -7,7 +7,8 @@ A Python-based investigation tool for analyzing Microsoft Entra ID (formerly Azu
 - **Session Hijacking Detection**: Identifies sessions with geographic anomalies that may indicate session hijacking
 - **Baseline Location Enforcement**: Detects sign-in attempts from locations outside the configured baseline country
 - **Threat Intelligence Enrichment**: Integrates with VirusTotal API to assess IP address reputation
-- **Authentication Success Analysis**: Identifies successful authentication attempts from foreign locations
+- **Authentication Success Analysis**: Identifies successful password-based authentication attempts from foreign locations
+- **MFA Satisfaction Detection**: Detects successful MFA-satisfied authentication attempts from foreign locations
 - **Automated Report Generation**: Generates comprehensive Word document reports with findings and recommendations
 
 ## Prerequisites
@@ -124,7 +125,8 @@ python app.py
    - **Step 1**: Session hijacking analysis
    - **Step 2**: Baseline location violations detection
    - **Step 3**: VirusTotal threat intelligence lookup (rate-limited to 1 request/minute)
-   - **Step 4**: Successful foreign authentication review
+   - **Step 4**: Successful password-based authentication from foreign locations
+   - **Step 5**: Successful MFA-satisfied authentication from foreign locations
 
 4. Output files will be generated:
    - `main_investigation.csv`: Merged and processed data
@@ -142,7 +144,10 @@ Detects all sign-in events originating from locations outside the baseline count
 Enriches foreign IP addresses with threat intelligence data from VirusTotal. Note: This step respects VirusTotal's rate limits (1 request per minute).
 
 ### Step 4: Authentication Success Review
-Identifies successful password-based authentication attempts from foreign locations, which may indicate credential compromise.
+Identifies successful password-based authentication attempts (Password Hash Sync) from foreign locations, which may indicate credential compromise.
+
+### Step 5: MFA Satisfaction Review
+Detects successful MFA-satisfied authentication attempts from foreign locations. This includes authentications where MFA was previously satisfied or where the result detail indicates MFA completion. This step helps identify potential session reuse or MFA bypass scenarios from unauthorized geographic locations.
 
 ## Output
 
@@ -180,6 +185,7 @@ The script expects CSV or Excel files with the following columns:
 - `Succeeded`
 - `Authentication method`
 - `Authentication method detail`
+- `Result detail` (required for Step 5 MFA detection)
 
 ## Docker Configuration
 
