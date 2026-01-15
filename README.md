@@ -36,7 +36,8 @@ docker-compose build
 
 4. Run the investigation:
 ```bash
-docker-compose run --rm entra-investigation
+docker-compose up -d
+python3 app.py
 ```
 
 5. Find your results in the `data/output/` directory
@@ -195,14 +196,7 @@ The script supports CSV (`.csv`) and Excel (`.xls`, `.xlsx`) files. Ensure your 
 - Check your API quota/rate limits
 - Ensure you have internet connectivity
 
-## License
-
-[Specify your license here]
-
-## Contributing
-
-[Add contribution guidelines if applicable]
 
 ## Author
 
-[Your name/contact information]
+[Momen Yasser /momenyasser221@gmail.com]
