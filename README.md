@@ -149,6 +149,12 @@ Detects all sign-in events originating from locations outside the baseline count
 ### Step 3: Threat Intelligence Assessment
 Enriches foreign IP addresses with threat intelligence data from VirusTotal. Note: This step respects VirusTotal's rate limits (1 request per minute).
 
+**Threat Intelligence Data:**
+- Malicious detection count from VirusTotal
+- Suspicious detection count from VirusTotal
+- IP Provider (AS Owner) information for network attribution
+- All data is presented in professionally formatted tables in the investigation report
+
 ### Step 4: Authentication Success Review
 Identifies successful password-based authentication attempts (Password Hash Sync) from foreign locations, which may indicate credential compromise.
 
