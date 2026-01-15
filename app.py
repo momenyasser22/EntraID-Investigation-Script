@@ -11,8 +11,17 @@ BASELINE_LOCATION = "EG"
 VT_API_KEY = "0ff41484d0e540398497d5c511cd3fead0e0bed2f0df0a92c614f3f4b7c76386"
 SCRIPT_DIR = Path(__file__).parent
 
-# Docker-aware output directory (mounted via docker-compose)
-OUTPUT_DIR = Path("/data/output")
+
+# Output directory (Docker + local compatible)
+DOCKER_DATA_DIR = Path("/data")
+
+if DOCKER_DATA_DIR.exists():
+    # Running inside Docker
+    OUTPUT_DIR = DOCKER_DATA_DIR / "output"
+else:
+    # Running locally
+    OUTPUT_DIR = SCRIPT_DIR / "data" / "output"
+
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 OUTPUT_CSV = OUTPUT_DIR / "main_investigation.csv"
