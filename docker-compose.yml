@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  entra-investigation:
+    container_name: entraid-investigation
+    build: .
+    image: entraid-investigation:latest
+    stdin_open: true
+    tty: true
+
+    volumes:
+      - ./data:/data
+
+    working_dir: /app
+
+    command: python app.py

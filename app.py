@@ -11,8 +11,11 @@ BASELINE_LOCATION = "EG"
 VT_API_KEY = "0ff41484d0e540398497d5c511cd3fead0e0bed2f0df0a92c614f3f4b7c76386"
 SCRIPT_DIR = Path(__file__).parent
 
-OUTPUT_CSV = SCRIPT_DIR / "main_investigation.csv"
-OUTPUT_DOC = SCRIPT_DIR / "investigation_report.docx"
+# Docker-aware output directory (mounted via docker-compose)
+OUTPUT_DIR = Path("/data/output")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+OUTPUT_CSV = OUTPUT_DIR / "main_investigation.csv"
 
 # =============================
 # Helper Functions
@@ -318,6 +321,22 @@ def main():
 
     main_df = merge_files(signin_df, auth_df)
     main_df.to_csv(OUTPUT_CSV, index=False)
+
+    # Determine investigated user for report naming
+    users = main_df["User"].dropna().unique()
+
+    if len(users) == 1:
+        investigated_user = users[0]
+    else:
+        investigated_user = "Multiple_Users"
+
+    # Sanitize filename (remove unsafe characters)
+    safe_user = "".join(
+        c for c in investigated_user if c.isalnum() or c in (" ", "_", "-")
+    ).strip().replace(" ", "_")
+
+    global OUTPUT_DOC
+    OUTPUT_DOC = OUTPUT_DIR / f"Investigation_Report_{safe_user}.docx"
 
     step1 = investigation_step_1(main_df)
     step2 = investigation_step_2(main_df)
